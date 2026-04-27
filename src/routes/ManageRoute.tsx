@@ -22,6 +22,10 @@ function uniq(arr: string[]) {
   return Array.from(new Set(arr))
 }
 
+function clearImageCache() {
+  window.localStorage.removeItem('englishChunkStudy.imageCache.v1')
+}
+
 export function ManageRoute() {
   const { setId } = useParams()
   const set = setId ? getSetById(setId) : null
@@ -34,11 +38,15 @@ export function ManageRoute() {
   const [chunkEn, setChunkEn] = useState('')
   const [chunkKo, setChunkKo] = useState('')
   const [chunkExample, setChunkExample] = useState('')
+  const [chunkImgUrl, setChunkImgUrl] = useState('')
+  const [chunkKeyword, setChunkKeyword] = useState('')
   const [chunkTags, setChunkTags] = useState('place')
 
   // Template form
   const [tplKoPrompts, setTplKoPrompts] = useState('')
   const [tplTags, setTplTags] = useState('direction')
+  const [tplImgUrl, setTplImgUrl] = useState('')
+  const [tplKeyword, setTplKeyword] = useState('')
   const [selectedChunkIds, setSelectedChunkIds] = useState<string[]>([])
 
   if (!set) {
@@ -64,6 +72,8 @@ export function ManageRoute() {
     const id = `c_${normalizeId(en)}`
     const koSenses = splitLines(chunkKo)
     const example = chunkExample.trim() || en
+    const imgUrl = chunkImgUrl.trim() || undefined
+    const keyword = chunkKeyword.trim() || undefined
     const tags = uniq(
       chunkTags
         .split(',')
@@ -79,6 +89,8 @@ export function ManageRoute() {
     const nextChunk: Chunk = {
       id,
       en,
+      imgUrl,
+      keyword,
       koSenses: koSenses.length ? koSenses : ['(한글 의미를 입력하세요)'],
       example,
       tags,
@@ -89,6 +101,8 @@ export function ManageRoute() {
     setChunkEn('')
     setChunkKo('')
     setChunkExample('')
+    setChunkImgUrl('')
+    setChunkKeyword('')
   }
 
   const toggleSelectedChunk = (id: string) => {
@@ -108,6 +122,8 @@ export function ManageRoute() {
     }
 
     const id = `t_${normalizeId(koPrompts[0])}_${Math.random().toString(16).slice(2, 8)}`
+    const imgUrl = tplImgUrl.trim() || undefined
+    const keyword = tplKeyword.trim() || undefined
     const tags = uniq(
       tplTags
         .split(',')
@@ -117,6 +133,8 @@ export function ManageRoute() {
 
     const nextTpl: Template = {
       id,
+      imgUrl,
+      keyword,
       koPrompts,
       answerChunkIds: selectedChunkIds,
       tags,
@@ -125,6 +143,8 @@ export function ManageRoute() {
     saveSet({ ...set, templates: [...set.templates, nextTpl] })
 
     setTplKoPrompts('')
+    setTplImgUrl('')
+    setTplKeyword('')
     setSelectedChunkIds([])
   }
 
@@ -166,6 +186,17 @@ export function ManageRoute() {
             >
               초기화
             </button>
+            <button
+              className="btn"
+              type="button"
+              onClick={() => {
+                clearImageCache()
+                alert('이미지 캐시를 지웠어요. 다시 학습/퀴즈를 열면 재검색합니다.')
+              }}
+              title="이미지 URL 캐시 초기화"
+            >
+              이미지 캐시 삭제
+            </button>
           </div>
 
           <div className="divider" />
@@ -196,6 +227,26 @@ export function ManageRoute() {
               value={chunkEn}
               onChange={(e) => setChunkEn(e.target.value)}
               placeholder='예: "How do I get to" / "the hospital"'
+            />
+
+            <div className="label" style={{ marginTop: 12 }}>
+              직접 입력 이미지 URL(선택)
+            </div>
+            <input
+              className="input"
+              value={chunkImgUrl}
+              onChange={(e) => setChunkImgUrl(e.target.value)}
+              placeholder='예: "https://.../station.jpg"'
+            />
+
+            <div className="label" style={{ marginTop: 12 }}>
+              키워드(이미지 없을 때 표시)
+            </div>
+            <input
+              className="input"
+              value={chunkKeyword}
+              onChange={(e) => setChunkKeyword(e.target.value)}
+              placeholder='예: "Station" / "School"'
             />
 
             <div className="label" style={{ marginTop: 12 }}>
@@ -240,7 +291,11 @@ export function ManageRoute() {
             <div className="label">현재 청크 ({set.chunks.length})</div>
             <div className="chips" style={{ marginTop: 10 }}>
               {set.chunks.map((c) => (
-                <span key={c.id} className="chip" title={(c.koSenses ?? []).join('\n')}>
+                <span
+                  key={c.id}
+                  className="chip"
+                  title={[c.keyword, c.imgUrl, ...(c.koSenses ?? [])].filter(Boolean).join('\n')}
+                >
                   {c.en}
                 </span>
               ))}
@@ -257,6 +312,26 @@ export function ManageRoute() {
             />
 
             <div className="label" style={{ marginTop: 12 }}>
+              직접 입력 이미지 URL(선택)
+            </div>
+            <input
+              className="input"
+              value={tplImgUrl}
+              onChange={(e) => setTplImgUrl(e.target.value)}
+              placeholder='예: "https://.../station.jpg"'
+            />
+
+            <div className="label" style={{ marginTop: 12 }}>
+              키워드(이미지 없을 때 표시)
+            </div>
+            <input
+              className="input"
+              value={tplKeyword}
+              onChange={(e) => setTplKeyword(e.target.value)}
+              placeholder='예: "Station" / "Bank"'
+            />
+
+            <div className="label" style={{ marginTop: 12 }}>
               정답 청크 선택 (2~3개)
             </div>
             <div className="chips" style={{ marginTop: 10 }}>
@@ -268,7 +343,7 @@ export function ManageRoute() {
                     type="button"
                     className={selected ? 'chip chipPicked' : 'chip chipOption'}
                     onClick={() => toggleSelectedChunk(c.id)}
-                    title={(c.koSenses ?? []).join('\n')}
+                    title={[c.keyword, c.imgUrl, ...(c.koSenses ?? [])].filter(Boolean).join('\n')}
                   >
                     {c.en}
                   </button>

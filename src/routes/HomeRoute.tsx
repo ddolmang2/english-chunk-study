@@ -10,6 +10,9 @@ export function HomeRoute() {
           <div className="appTitle">English Chunk Study</div>
           <div className="appSubtitle">한글 의도 → 2~3청크 조립 시험</div>
         </div>
+        <Link className="btn" to="/bulk-import">
+          데이터 관리
+        </Link>
       </header>
 
       <main className="container">
@@ -22,6 +25,9 @@ export function HomeRoute() {
               <div className="row">
                 <Link className="btn" to={`/sets/${s.id}/learn`}>
                   학습
+                </Link>
+                <Link className="btn" to={`/sets/${s.id}/img-quiz`}>
+                  이미지 퀴즈
                 </Link>
                 <Link className="btnPrimary" to={`/sets/${s.id}/quiz`}>
                   시험

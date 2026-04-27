@@ -2,15 +2,22 @@ import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { chunkMap } from '../data/sample'
 import { getSetById } from '../data/store'
+import { useAutoImage } from '../hooks/useAutoImage'
 
 export function LearnRoute() {
   const { setId } = useParams()
   const set = setId ? getSetById(setId) : null
   const [idx, setIdx] = useState(0)
+  const [showKo, setShowKo] = useState(false)
 
   const chunks = set?.chunks ?? []
   const current = chunks[idx] ?? null
   const chunkById = useMemo(() => (set ? chunkMap(set) : new Map()), [set])
+  const autoImg = useAutoImage({
+    cacheId: `${setId ?? 'set'}:${current?.id ?? 'none'}`,
+    query: current?.keyword ?? current?.en ?? '',
+    providedUrl: current?.imgUrl,
+  })
 
   if (!set) {
     return (
@@ -32,9 +39,14 @@ export function LearnRoute() {
           ← 세트
         </Link>
         <div className="topbarTitle">{set.title} · 학습</div>
-        <Link className="btnPrimary" to={`/sets/${set.id}/quiz`}>
-          시험하기
-        </Link>
+        <div className="row" style={{ marginTop: 0 }}>
+          <Link className="btn" to={`/sets/${set.id}/img-quiz`}>
+            이미지 퀴즈
+          </Link>
+          <Link className="btnPrimary" to={`/sets/${set.id}/quiz`}>
+            조립 시험
+          </Link>
+        </div>
       </header>
 
       <main className="container">
@@ -44,20 +56,62 @@ export function LearnRoute() {
               <div className="muted">
                 {idx + 1} / {chunks.length}
               </div>
-              <div className="chunkEn">{current?.en}</div>
             </div>
+            <button className="btn" type="button" onClick={() => setShowKo((v) => !v)}>
+              {showKo ? '해석 숨기기' : '해석 보기'}
+            </button>
           </div>
 
           <div className="divider" />
 
-          <div className="section">
-            <div className="label">한글 의미(의도)</div>
-            <ul className="list">
-              {(current?.koSenses ?? []).map((s) => (
-                <li key={s}>{s}</li>
-              ))}
-            </ul>
+          <button
+            type="button"
+            className="imgCard"
+            onClick={() => setShowKo((v) => !v)}
+            title="탭하면 해석 토글"
+          >
+            {autoImg.status === 'ready' ? (
+              <img
+                className="imgMain"
+                src={autoImg.url}
+                alt={current?.keyword ?? current?.en ?? 'image'}
+                onError={() => {
+                  autoImg.invalidate()
+                }}
+              />
+            ) : (
+              <div className="imgFallback">
+                <div className="imgFallbackTitle">{current?.keyword ?? 'Image'}</div>
+                <div className="imgFallbackSub muted">
+                  {autoImg.status === 'loading'
+                    ? '이미지 검색 중...'
+                    : autoImg.status === 'not-found'
+                      ? '이미지를 찾지 못했어요'
+                      : '이미지 없음'}
+                </div>
+                {!autoImg.hasPixabayKey && (
+                  <div className="muted" style={{ marginTop: 10 }}>
+                    Pixabay API 키가 없어요. `.env` 설정 후 개발서버를 재시작하세요.
+                  </div>
+                )}
+                {(autoImg.status === 'not-found' || autoImg.status === 'idle') && (
+                  <a className="btnLink" href={autoImg.searchUrl} target="_blank" rel="noreferrer">
+                    Google 이미지 검색
+                  </a>
+                )}
+              </div>
+            )}
+          </button>
+
+          <div className="chunkEn" style={{ marginTop: 14 }}>
+            {current?.en}
           </div>
+
+          {showKo && (
+            <div className="koReveal">
+              {(current?.koSenses ?? []).join(' · ') || '(해석 없음)'}
+            </div>
+          )}
 
           <div className="section">
             <div className="label">예문</div>
@@ -78,7 +132,10 @@ export function LearnRoute() {
             <button
               className="btn"
               type="button"
-              onClick={() => setIdx((v) => Math.min(chunks.length - 1, v + 1))}
+              onClick={() => {
+                setIdx((v) => Math.min(chunks.length - 1, v + 1))
+                setShowKo(false)
+              }}
               disabled={idx >= chunks.length - 1}
             >
               다음

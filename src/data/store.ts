@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { studySets as seedSets, type StudySet } from './sample'
 
 const STORAGE_KEY = 'englishChunkStudy.sets.v1'
+const SEED_URL = '/data/seed.json'
 
 function safeJsonParse<T>(raw: string): T | null {
   try {
@@ -41,6 +42,29 @@ export function useStudySets() {
     return () => {
       window.removeEventListener('storage', onChange)
       window.removeEventListener('englishChunkStudy:setsChanged', onChange)
+    }
+  }, [])
+
+  // If there is no user-saved data yet, optionally hydrate from external seed JSON.
+  useEffect(() => {
+    const hasLocal = window.localStorage.getItem(STORAGE_KEY)
+    if (hasLocal) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(SEED_URL, { cache: 'no-cache' })
+        if (!res.ok) return
+        const json = (await res.json()) as unknown
+        if (!Array.isArray(json)) return
+        if (cancelled) return
+        saveSets(json as StudySet[])
+        window.dispatchEvent(new Event('englishChunkStudy:setsChanged'))
+      } catch {
+        // ignore (offline / no seed file)
+      }
+    })()
+    return () => {
+      cancelled = true
     }
   }, [])
 
