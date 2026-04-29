@@ -655,7 +655,6 @@ function renderHighlightedText(
       <span
         key={`${segmentStart}-${idx}-${h.type}`}
         className={h.type === 'verb' ? 'hlVerb' : h.type === 'object' ? 'hlObject' : 'hlSubject'}
-        data-offset={from}
       >
         {segment.slice(from - segmentStart, to - segmentStart)}
       </span>,
@@ -754,7 +753,6 @@ async function extractPdfPages(file: File): Promise<PageData[]> {
 export function ClozeWorkbookRoute() {
   const [pages, setPages] = useState<PageData[]>([])
   const [pdfBytes, setPdfBytes] = useState<Uint8Array | null>(null)
-  const [chunkInput, setChunkInput] = useState(DEFAULT_CHUNKS.join('\n'))
   const [currentPageNumber, setCurrentPageNumber] = useState(1)
   const [refreshSeed, setRefreshSeed] = useState(0)
   const [droppedByBlankId, setDroppedByBlankId] = useState<Record<string, string>>({})
@@ -765,6 +763,7 @@ export function ClozeWorkbookRoute() {
   const [isParsing, setIsParsing] = useState(false)
   const [isHighlightOn, setIsHighlightOn] = useState(true)
   const [isOriginalOn, setIsOriginalOn] = useState(true)
+  const [isPageListVisible, setIsPageListVisible] = useState(true)
   const [isPdfRendering, setIsPdfRendering] = useState(false)
   const [analysisBySentenceId, setAnalysisBySentenceId] = useState<Record<string, GeminiGrammarAnalysis>>({})
   const [activeSentenceId, setActiveSentenceId] = useState<string | null>(null)
@@ -775,14 +774,7 @@ export function ClozeWorkbookRoute() {
     null,
   )
 
-  const chunkList = useMemo(
-    () =>
-      chunkInput
-        .split('\n')
-        .map((v) => v.trim())
-        .filter(Boolean),
-    [chunkInput],
-  )
+  const chunkList = DEFAULT_CHUNKS
 
   const currentPage = pages.find((p) => p.pageNumber === currentPageNumber)
   const blanks = useMemo(
@@ -994,26 +986,6 @@ export function ClozeWorkbookRoute() {
     }
   }
 
-  function onClickSentenceInBody(offset: number) {
-    const sentence = parsedSentences.find((item) => offset >= item.start && offset < item.end)
-    if (!sentence) return
-    setMessage(`문장 ${parsedSentences.findIndex((s) => s.id === sentence.id) + 1} 분석 요청 중...`)
-    setMessageType('success')
-    void onClickSentence(sentence)
-  }
-
-  function onClickClozeText(event: React.MouseEvent<HTMLParagraphElement>) {
-    const target = event.target as HTMLElement | null
-    if (!target) return
-    const tokenEl = target.closest<HTMLElement>('[data-offset]')
-    if (!tokenEl) return
-    const raw = tokenEl.dataset.offset
-    if (!raw) return
-    const offset = Number(raw)
-    if (!Number.isFinite(offset)) return
-    onClickSentenceInBody(offset)
-  }
-
   function renderSentenceText(sentence: ParsedSentence, analysis?: GeminiGrammarAnalysis) {
     if (!analysis) return sentence.text
     const ranges = buildGeminiRangesForSentence(sentence, analysis)
@@ -1046,31 +1018,32 @@ export function ClozeWorkbookRoute() {
           <p className="muted">{isParsing ? 'PDF 텍스트 파싱 중...' : '브라우저 메모리 내 임시 저장으로 동작합니다.'}</p>
         </section>
 
-        <section className="card section">
-          <div className="label">학습용 청크 리스트 (줄바꿈 구분)</div>
-          <textarea
-            className="textarea"
-            value={chunkInput}
-            onChange={(e) => setChunkInput(e.target.value)}
-            placeholder="예: zero trust"
-          />
-          <p className="muted">보안 청크 500개/숙어 목록을 여기에 확장하면 동일 로직으로 즉시 반영됩니다.</p>
-        </section>
-
         {pages.length > 0 && (
           <section className="card section">
-            <div className="label">페이지 선택</div>
-            <div className="chips">
-              {pages.map((page) => (
-                <button
-                  key={page.pageNumber}
-                  className={`chip chipOption ${page.pageNumber === currentPageNumber ? 'chipPicked' : ''}`}
-                  onClick={() => openPage(page.pageNumber)}
-                >
-                  {page.pageNumber}p
+            <div className="rowBetween">
+              <div className="label">페이지 선택</div>
+              <div className="row" style={{ marginTop: 0 }}>
+                <button className="btn" onClick={() => setIsOriginalOn((v) => !v)} disabled={!currentPage}>
+                  PDF {isOriginalOn ? '숨기기' : '보기'}
                 </button>
-              ))}
+                <button className="btn" onClick={() => setIsPageListVisible((v) => !v)} disabled={pages.length === 0}>
+                  페이지 리스트 {isPageListVisible ? '숨기기' : '보기'}
+                </button>
+              </div>
             </div>
+            {isPageListVisible && (
+              <div className="chips">
+                {pages.map((page) => (
+                  <button
+                    key={page.pageNumber}
+                    className={`chip chipOption ${page.pageNumber === currentPageNumber ? 'chipPicked' : ''}`}
+                    onClick={() => openPage(page.pageNumber)}
+                  >
+                    {page.pageNumber}p
+                  </button>
+                ))}
+              </div>
+            )}
           </section>
         )}
 
@@ -1101,22 +1074,11 @@ export function ClozeWorkbookRoute() {
 
               <div className="label section">클로즈 학습 본문</div>
 
-              <p
-                className="clozeText"
-                onClick={(e) => {
-                  onClickClozeText(e)
-                }}
-                style={{ cursor: 'pointer' }}
-              >
+              <p className="clozeText">
                 {tokens.map((token, idx) => {
                   if (token.type === 'text') {
                     return (
-                      <span
-                        key={`t-${idx}`}
-                        className="clozeTextToken clozeClickableSentence"
-                        title="클릭해서 AI 문장 분석 보기"
-                        data-offset={token.start}
-                      >
+                      <span key={`t-${idx}`} className="clozeTextToken">
                         {renderHighlightedText(token.content, token.start, mergedHighlights, isHighlightOn)}
                       </span>
                     )
@@ -1131,8 +1093,6 @@ export function ClozeWorkbookRoute() {
                       className={`blankSlot ${dropped ? 'blankSolved' : ''} ${isVerbBlank && isHighlightOn ? 'blankVerb' : ''}`}
                       onDrop={(e) => blank && onDropBlank(e, blank)}
                       onDragOver={onAllowDrop}
-                      title="클릭해서 AI 문장 분석 보기"
-                      data-offset={token.start}
                     >
                       {dropped ?? '[ ______ ]'}
                       {blankFeedbackById[token.id] && (
@@ -1152,9 +1112,6 @@ export function ClozeWorkbookRoute() {
               <div className="row chunkPoolControls">
                 <button className="btn" onClick={() => setRefreshSeed((n) => n + 1)} disabled={!currentPage}>
                   현재 페이지 빈칸 다시 섞기
-                </button>
-                <button className="btn" onClick={() => setIsOriginalOn((v) => !v)} disabled={!currentPage}>
-                  Original {isOriginalOn ? 'On' : 'Off'}
                 </button>
               </div>
               <div className="chunkPool">
@@ -1221,50 +1178,6 @@ export function ClozeWorkbookRoute() {
               })}
             </div>
           </section>
-        )}
-
-        {activeSentenceId && (
-          <aside className="aiCoachFloatingCard">
-            <div className="aiCoachTitle" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span>AI Sentence Coach</span>
-              <button
-                type="button"
-                aria-label="Close"
-                onClick={() => setActiveSentenceId(null)}
-                style={{
-                  background: 'transparent',
-                  border: 0,
-                  padding: 0,
-                  color: 'inherit',
-                  cursor: 'pointer',
-                  fontSize: 14,
-                  lineHeight: 1,
-                }}
-              >
-                X
-              </button>
-            </div>
-            <div className="aiCoachSentence">{parsedSentences.find((s) => s.id === activeSentenceId)?.text}</div>
-            {loadingSentenceId === activeSentenceId && <div className="muted">Gemini가 분석 중입니다...</div>}
-            {loadingSentenceId !== activeSentenceId && analysisBySentenceId[activeSentenceId] && (
-              <>
-                <div className="sentenceMeta" style={{ marginTop: 8 }}>
-                  <span className="badgeSubj">S: {analysisBySentenceId[activeSentenceId].grammar_analysis.subject || '-'}</span>
-                  <span className="badgeVerb">V: {analysisBySentenceId[activeSentenceId].grammar_analysis.verb || '-'}</span>
-                  <span className="badgeObj">O: {analysisBySentenceId[activeSentenceId].grammar_analysis.object || '-'}</span>
-                </div>
-                <div className="sentenceDetail">
-                  <strong>의역</strong>: {analysisBySentenceId[activeSentenceId].translation}
-                </div>
-                <div className="sentenceDetail">
-                  <strong>포인트</strong>: {analysisBySentenceId[activeSentenceId].learning_tip}
-                </div>
-              </>
-            )}
-            {loadingSentenceId !== activeSentenceId && !analysisBySentenceId[activeSentenceId] && sentenceError && (
-              <div className="result no">{sentenceError}</div>
-            )}
-          </aside>
         )}
 
         {currentPage && blanks.length === 0 && (

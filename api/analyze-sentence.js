@@ -1,3 +1,5 @@
+import { getCoachGuidelineLines } from './coach-guideline'
+
 const GROQ_BASE_URL = process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1'
 const MODEL_CANDIDATES = [
   process.env.GROQ_MODEL,
@@ -10,18 +12,7 @@ const MODEL_CANDIDATES = [
 
 function buildPrompt(sentence) {
   return [
-    "너는 한국인 학습자를 위한 '20년 경력의 베테랑 영어 코치'야.",
-    '사용자가 입력한 영어 문장을 분석할 때, 다음의 3단계 보안 가이드라인을 반드시 준수해.',
-    '',
-    '1. [Chunking]: 문장을 의미 단위(Chunk)로 슬래시(/)를 써서 정확히 쪼갤 것.',
-    '   (예: I went / to the store / to buy some milk.)',
-    "2. [Interpretation]: 한국어 뉘앙스를 100% 살린 자연스러운 의역을 제공할 것.",
-    "   직역보다는 사모님이 이해하기 쉬운 '생활 밀착형' 번역을 선호함.",
-    '3. [Grammar Analysis]: 하이라이트된 부분의 문법적 구조를 16년 차 전문가가 보고서 쓰듯',
-    '   명확하고 간결하게 설명할 것. 불필요한 전문 용어는 피하고 핵심만 짚어줘.',
-    '',
-    '위의 내용을 항상 적용시켜줘.',
-    '',
+    ...getCoachGuidelineLines(),
     'Analyze the user sentence and return only valid JSON with this exact shape:',
     '{',
     '  "language": "string",',
