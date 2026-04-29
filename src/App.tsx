@@ -5,6 +5,7 @@ import { ImgQuizRoute } from './routes/ImgQuizRoute'
 import { BulkImportRoute } from './routes/BulkImportRoute'
 import { ManageRoute } from './routes/ManageRoute'
 import { QuizRoute } from './routes/QuizRoute'
+import { ClozeWorkbookRoute } from './routes/ClozeWorkbookRoute'
 
 export function App() {
   return (
@@ -15,6 +16,7 @@ export function App() {
       <Route path="/sets/:setId/quiz" element={<QuizRoute />} />
       <Route path="/sets/:setId/img-quiz" element={<ImgQuizRoute />} />
       <Route path="/sets/:setId/manage" element={<ManageRoute />} />
+      <Route path="/cloze-workbook" element={<ClozeWorkbookRoute />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

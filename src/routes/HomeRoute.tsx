@@ -7,12 +7,16 @@ export function HomeRoute() {
     <div className="page">
       <header className="topbar">
         <div>
-          <div className="appTitle">English Chunk Study</div>
-          <div className="appSubtitle">한글 의도 → 2~3청크 조립 시험</div>
+          <div className="appTitle">말랑한 영어공부</div>
         </div>
-        <Link className="btn" to="/bulk-import">
-          데이터 관리
-        </Link>
+        <div className="row">
+          <Link className="btn" to="/cloze-workbook">
+            PDF학습
+          </Link>
+          <Link className="btn" to="/bulk-import">
+            학습데이터관리
+          </Link>
+        </div>
       </header>
 
       <main className="container">
@@ -20,8 +24,6 @@ export function HomeRoute() {
         <div className="grid">
           {sets.map((s) => (
             <section key={s.id} className="card">
-              <div className="cardTitle">{s.title}</div>
-              <div className="muted">{s.description}</div>
               <div className="row">
                 <Link className="btn" to={`/sets/${s.id}/learn`}>
                   학습

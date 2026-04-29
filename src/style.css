@@ -1,20 +1,20 @@
 :root {
-  --bg: #0b1020;
-  --panel: rgba(255, 255, 255, 0.06);
-  --panel2: rgba(255, 255, 255, 0.085);
-  --text: rgba(255, 255, 255, 0.9);
-  --muted: rgba(255, 255, 255, 0.65);
-  --border: rgba(255, 255, 255, 0.12);
-  --shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  --bg: #050b17;
+  --panel: rgba(11, 25, 46, 0.78);
+  --panel2: rgba(18, 41, 76, 0.76);
+  --text: rgba(232, 244, 255, 0.94);
+  --muted: rgba(190, 213, 236, 0.72);
+  --border: rgba(98, 152, 216, 0.26);
+  --shadow: 0 14px 36px rgba(1, 7, 16, 0.55);
   --radius: 16px;
-  --primary: #7c3aed;
-  --primary2: #a78bfa;
+  --primary: #2563eb;
+  --primary2: #38bdf8;
 
   color-scheme: dark;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   line-height: 1.4;
-  background: radial-gradient(1200px 500px at 20% 10%, rgba(124, 58, 237, 0.35), transparent 55%),
-    radial-gradient(900px 450px at 80% 0%, rgba(59, 130, 246, 0.25), transparent 55%),
+  background: radial-gradient(1200px 500px at 20% 10%, rgba(37, 99, 235, 0.2), transparent 55%),
+    radial-gradient(900px 450px at 80% 0%, rgba(56, 189, 248, 0.15), transparent 55%),
     var(--bg);
   color: var(--text);
 }
@@ -47,7 +47,7 @@ a {
   justify-content: space-between;
   padding: 14px 16px;
   border-bottom: 1px solid var(--border);
-  background: rgba(10, 15, 30, 0.7);
+  background: rgba(5, 12, 23, 0.82);
   backdrop-filter: blur(10px);
 }
 
@@ -93,7 +93,7 @@ a {
 }
 
 .card {
-  background: linear-gradient(180deg, var(--panel), rgba(255, 255, 255, 0.04));
+  background: linear-gradient(180deg, var(--panel), rgba(13, 33, 60, 0.72));
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -130,7 +130,7 @@ a {
 .btnGhost {
   appearance: none;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(148, 188, 233, 0.12);
   color: var(--text);
   border-radius: 12px;
   padding: 10px 12px;
@@ -143,8 +143,8 @@ a {
 .btn:hover,
 .btnPrimary:hover,
 .btnGhost:hover {
-  background: rgba(255, 255, 255, 0.09);
-  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(148, 188, 233, 0.2);
+  border-color: rgba(148, 188, 233, 0.42);
 }
 
 .btn:active,
@@ -160,12 +160,13 @@ a {
 }
 
 .btnGhost {
-  background: transparent;
+  background: rgba(148, 188, 233, 0.08);
+  border-color: rgba(148, 188, 233, 0.28);
 }
 
 .btnPrimary {
-  border-color: rgba(124, 58, 237, 0.55);
-  background: linear-gradient(180deg, rgba(124, 58, 237, 0.95), rgba(124, 58, 237, 0.7));
+  border-color: rgba(56, 189, 248, 0.58);
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.95), rgba(29, 78, 216, 0.8));
 }
 
 .btnLink {
@@ -383,8 +384,8 @@ a {
 
 .input:focus,
 .textarea:focus {
-  border-color: rgba(167, 139, 250, 0.6);
-  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.18);
+  border-color: rgba(56, 189, 248, 0.7);
+  box-shadow: 0 0 0 4px rgba(14, 116, 244, 0.22);
 }
 
 .panel {
@@ -392,5 +393,342 @@ a {
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.04);
   padding: 12px;
+}
+
+.clozeContainer {
+  width: min(1200px, 100%);
+}
+
+.clozeBoard {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(240px, 3fr);
+  gap: 14px;
+}
+
+.clozeTextCard,
+.chunkPoolCard {
+  min-height: 280px;
+}
+
+.clozeTextCard {
+  position: relative;
+}
+
+.clozeToast {
+  position: sticky;
+  top: 8px;
+  z-index: 5;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+.clozeToast.success {
+  border-color: rgba(34, 197, 94, 0.5);
+}
+
+.clozeToast.error {
+  border-color: rgba(239, 68, 68, 0.6);
+}
+
+.clozeToastExample {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.pdfPreviewWrap {
+  margin-top: 12px;
+}
+
+.pdfCanvasBox {
+  margin-top: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.24);
+  overflow: auto;
+  max-height: 60dvh;
+}
+
+.pdfCanvas {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
+.clozeText {
+  margin-top: 12px;
+  line-height: 1.9;
+  font-size: 17px;
+  white-space: break-spaces;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: background-color 0.15s ease;
+}
+
+.clozeText:hover {
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.clozeText * {
+  cursor: pointer !important;
+}
+
+.clozeTextToken {
+  white-space: break-spaces;
+}
+
+.clozeClickableSentence {
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+  pointer-events: auto;
+}
+
+.clozeClickableSentence:hover {
+  background: rgba(56, 189, 248, 0.16);
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.3) inset;
+}
+
+.hlSubject {
+  color: #60a5fa;
+  font-weight: 650;
+}
+
+.hlVerb {
+  color: #f87171;
+  font-weight: 700;
+}
+
+.hlObject {
+  color: #34d399;
+  font-weight: 650;
+}
+
+.blankSlot {
+  position: relative;
+  display: inline-block;
+  vertical-align: baseline;
+  text-align: center;
+  min-width: 120px;
+  padding: 2px 10px;
+  margin: 0 4px;
+  border-radius: 10px;
+  border: 1px dashed rgba(167, 139, 250, 0.8);
+  background: rgba(124, 58, 237, 0.08);
+  cursor: pointer;
+}
+
+.blankFeedback {
+  position: absolute;
+  left: 50%;
+  bottom: -26px;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  background: rgba(15, 23, 42, 0.95);
+}
+
+.blankFeedback.success {
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.45);
+}
+
+.blankFeedback.error {
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.55);
+}
+
+.blankVerb {
+  border-color: #f87171;
+}
+
+.blankSolved {
+  border-style: solid;
+  border-color: rgba(34, 197, 94, 0.6);
+  background: rgba(34, 197, 94, 0.12);
+  font-weight: 700;
+}
+
+.chunkPool {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.chunkPoolControls {
+  margin-top: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.chunkPoolControls .btn {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.sentenceList {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.sentenceItem {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+}
+
+.sentenceBtn {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: var(--text);
+  border: 0;
+  padding: 10px 12px;
+  line-height: 1.65;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.sentenceBtn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sentenceIndex {
+  color: var(--muted);
+  margin-right: 6px;
+}
+
+.sentenceMainText {
+  flex: 1;
+  min-width: 0;
+}
+
+.sentenceVerified {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  background: rgba(56, 189, 248, 0.15);
+  color: #bae6fd;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 750;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.sentencePanel {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.25s ease;
+  border-top: 1px solid transparent;
+}
+
+.sentencePanel.open {
+  max-height: 220px;
+  border-top-color: var(--border);
+  padding: 10px 12px 12px;
+}
+
+.sentenceMeta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.badgeSubj,
+.badgeVerb,
+.badgeObj {
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.badgeSubj {
+  background: rgba(96, 165, 250, 0.18);
+  border: 1px solid rgba(96, 165, 250, 0.45);
+}
+
+.badgeVerb {
+  background: rgba(248, 113, 113, 0.18);
+  border: 1px solid rgba(248, 113, 113, 0.45);
+}
+
+.badgeObj {
+  background: rgba(52, 211, 153, 0.18);
+  border: 1px solid rgba(52, 211, 153, 0.45);
+}
+
+.sentenceDetail {
+  font-size: 14px;
+  margin-top: 6px;
+}
+
+.sentenceSubject {
+  color: #60a5fa;
+  font-weight: 650;
+}
+
+.sentenceVerb {
+  color: #f87171;
+  font-weight: 700;
+}
+
+.sentenceObject {
+  color: #34d399;
+  font-weight: 650;
+}
+
+@media (max-width: 900px) {
+  .clozeBoard {
+    grid-template-columns: 1fr;
+  }
+}
+
+.aiCoachFloatingCard {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  width: min(420px, calc(100vw - 24px));
+  z-index: 30;
+  border-radius: 14px;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  background: rgba(5, 12, 23, 0.94);
+  box-shadow: 0 16px 38px rgba(1, 7, 16, 0.6);
+  padding: 12px;
+}
+
+.aiCoachTitle {
+  font-size: 13px;
+  font-weight: 800;
+  color: #bae6fd;
+  margin-bottom: 6px;
+}
+
+.aiCoachSentence {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text);
 }
 
