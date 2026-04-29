@@ -29,6 +29,33 @@ type HighlightRange = {
   type: 'subject' | 'verb' | 'object'
 }
 
+function buildSentenceWindows(text: string): Array<{ start: number; end: number }> {
+  // PDF text extraction may contain variant terminators:
+  // '.', '．'(full-width dot), '。'(ideographic full stop), '…'(ellipsis), '!' '?'
+  // We split on these terminators and then consume trailing quote/bracket characters.
+  const windows: Array<{ start: number; end: number }> = []
+  const sentenceEndRe = /[.!?。．…！？]/g
+  const trailingRe = /["'’”)\]\}]/ // also consume quotes/brackets directly after terminator
+
+  let start = 0
+  for (const m of text.matchAll(sentenceEndRe)) {
+    const punctIndex = m.index ?? -1
+    if (punctIndex < 0) continue
+
+    let end = punctIndex + 1
+    while (end < text.length && trailingRe.test(text[end])) end += 1
+
+    const chunk = text.slice(start, end)
+    if (chunk.trim()) windows.push({ start, end })
+    start = end
+  }
+
+  const tail = text.slice(start)
+  if (tail.trim()) windows.push({ start, end: text.length })
+
+  return windows
+}
+
 type PositionedText = {
   text: string
   x: number
@@ -469,12 +496,12 @@ function renderWithBlanks(pageText: string, blanks: Blank[]) {
 
 function detectHighlightRanges(text: string): HighlightRange[] {
   const ranges: HighlightRange[] = []
-  const sentenceRegex = /[^.!?\n]+[.!?]?/g
+  const windows = buildSentenceWindows(text)
 
-  for (const sentenceMatch of text.matchAll(sentenceRegex)) {
-    const sentence = sentenceMatch[0]
-    const sentenceStart = sentenceMatch.index ?? -1
+  for (const { start: sentenceStart, end: sentenceEnd } of windows) {
     if (sentenceStart < 0) continue
+    const sentence = text.slice(sentenceStart, sentenceEnd)
+    if (!sentence.trim()) continue
 
     const words = Array.from(sentence.matchAll(/[A-Za-z][A-Za-z'-]*/g)).map((m) => ({
       word: m[0],
@@ -564,15 +591,16 @@ function detectHighlightRanges(text: string): HighlightRange[] {
 }
 
 function extractParsedSentences(text: string): ParsedSentence[] {
-  return Array.from(text.matchAll(/[^.!?\n]+[.!?]?/g))
-    .map((m, idx) => {
-      const raw = m[0]
+  const windows = buildSentenceWindows(text)
+  return windows
+    .map(({ start, end }, idx) => {
+      const raw = text.slice(start, end)
       const cleaned = raw.trim()
       if (!cleaned) return null
       const localStart = raw.indexOf(cleaned)
-      const start = (m.index ?? 0) + Math.max(0, localStart)
-      const end = start + cleaned.length
-      return { id: `s-${idx}-${start}`, text: cleaned, start, end }
+      const realStart = start + Math.max(0, localStart)
+      const realEnd = realStart + cleaned.length
+      return { id: `s-${idx}-${realStart}`, text: cleaned, start: realStart, end: realEnd }
     })
     .filter((v): v is ParsedSentence => Boolean(v))
 }
@@ -627,6 +655,7 @@ function renderHighlightedText(
       <span
         key={`${segmentStart}-${idx}-${h.type}`}
         className={h.type === 'verb' ? 'hlVerb' : h.type === 'object' ? 'hlObject' : 'hlSubject'}
+        data-offset={from}
       >
         {segment.slice(from - segmentStart, to - segmentStart)}
       </span>,
@@ -723,7 +752,6 @@ async function extractPdfPages(file: File): Promise<PageData[]> {
 }
 
 export function ClozeWorkbookRoute() {
-  const uiBuildTag = 'pdf-ai-click-debug-v1'
   const [pages, setPages] = useState<PageData[]>([])
   const [pdfBytes, setPdfBytes] = useState<Uint8Array | null>(null)
   const [chunkInput, setChunkInput] = useState(DEFAULT_CHUNKS.join('\n'))
@@ -742,8 +770,6 @@ export function ClozeWorkbookRoute() {
   const [activeSentenceId, setActiveSentenceId] = useState<string | null>(null)
   const [loadingSentenceId, setLoadingSentenceId] = useState<string | null>(null)
   const [sentenceError, setSentenceError] = useState<string | null>(null)
-  const [hoverCount, setHoverCount] = useState(0)
-  const [clickCount, setClickCount] = useState(0)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const pdfDocRef = useRef<Awaited<ReturnType<typeof getDocument>>['promise'] extends Promise<infer T> ? T : never | null>(
     null,
@@ -1078,10 +1104,8 @@ export function ClozeWorkbookRoute() {
               <p
                 className="clozeText"
                 onClick={(e) => {
-                  setClickCount((v) => v + 1)
                   onClickClozeText(e)
                 }}
-                onMouseEnter={() => setHoverCount((v) => v + 1)}
                 style={{ cursor: 'pointer' }}
               >
                 {tokens.map((token, idx) => {
@@ -1201,7 +1225,25 @@ export function ClozeWorkbookRoute() {
 
         {activeSentenceId && (
           <aside className="aiCoachFloatingCard">
-            <div className="aiCoachTitle">AI Sentence Coach</div>
+            <div className="aiCoachTitle" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>AI Sentence Coach</span>
+              <button
+                type="button"
+                aria-label="Close"
+                onClick={() => setActiveSentenceId(null)}
+                style={{
+                  background: 'transparent',
+                  border: 0,
+                  padding: 0,
+                  color: 'inherit',
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  lineHeight: 1,
+                }}
+              >
+                X
+              </button>
+            </div>
             <div className="aiCoachSentence">{parsedSentences.find((s) => s.id === activeSentenceId)?.text}</div>
             {loadingSentenceId === activeSentenceId && <div className="muted">Gemini가 분석 중입니다...</div>}
             {loadingSentenceId !== activeSentenceId && analysisBySentenceId[activeSentenceId] && (
@@ -1224,13 +1266,6 @@ export function ClozeWorkbookRoute() {
             )}
           </aside>
         )}
-
-        <aside className="aiCoachFloatingCard" style={{ left: 16, right: 'auto', bottom: 16, width: 280 }}>
-          <div className="aiCoachTitle">UI Debug</div>
-          <div className="muted">build: {uiBuildTag}</div>
-          <div className="muted">hover events: {hoverCount}</div>
-          <div className="muted">click events: {clickCount}</div>
-        </aside>
 
         {currentPage && blanks.length === 0 && (
           <section className="card section">

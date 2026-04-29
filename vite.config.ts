@@ -2,8 +2,13 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 
-const XAI_BASE_URL = 'https://api.x.ai/v1'
-const MODEL_CANDIDATES = ['grok-3-mini', 'grok-3', 'grok-4-0709', 'grok-code-fast-1']
+const GROQ_BASE_URL = process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1'
+const DEFAULT_MODEL_CANDIDATES = [
+  'llama-3.3-70b-versatile',
+  'llama-3.1-8b-instant',
+  'mixtral-8x7b-32768',
+  'gemma2-9b-it',
+]
 
 function readJsonBody(req: IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
@@ -55,55 +60,85 @@ function stripCodeFence(value: string) {
   return trimmed.replace(/^```[a-zA-Z]*\s*/m, '').replace(/```$/m, '').trim()
 }
 
-async function callGrok(apiKey: string, prompt: string) {
-  let lastError = 'Unknown Grok error'
-  for (const model of MODEL_CANDIDATES) {
-    const response = await fetch(`${XAI_BASE_URL}/chat/completions`, {
+async function callGroq(apiKey: string, prompt: string, modelCandidates: string[]) {
+  let lastError = 'Unknown Groq error'
+  for (const model of modelCandidates) {
+    const bodyWithJsonFormat = {
+      model,
+      temperature: 0.2,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: 'Return only valid JSON.' },
+        { role: 'user', content: prompt },
+      ],
+    }
+
+    const bodyWithoutJsonFormat = {
+      model,
+      temperature: 0.2,
+      messages: [
+        { role: 'system', content: 'Return only valid JSON.' },
+        { role: 'user', content: prompt },
+      ],
+    }
+
+    let response = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model,
-        temperature: 0.2,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: 'Return only valid JSON.' },
-          { role: 'user', content: prompt },
-        ],
-      }),
+      body: JSON.stringify(bodyWithJsonFormat),
     })
     if (!response.ok) {
       const errText = await response.text()
       lastError = `model=${model}, status=${response.status}, body=${errText}`
       if (response.status === 400 && errText.includes('Model not found')) continue
-      throw new Error(`Grok request failed: ${lastError}`)
+
+      // Some Groq models/configs may reject `response_format`. Retry without it.
+      const shouldRetryWithoutJsonFormat =
+        response.status === 400 && /response_format|json_object|unsupported/i.test(errText)
+      if (shouldRetryWithoutJsonFormat) {
+        response = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(bodyWithoutJsonFormat),
+        })
+        if (!response.ok) {
+          const retryErrText = await response.text()
+          throw new Error(`Groq request failed: model=${model}, status=${response.status}, body=${retryErrText}`)
+        }
+      } else {
+        throw new Error(`Groq request failed: ${lastError}`)
+      }
     }
 
     const json = (await response.json()) as {
       choices?: Array<{ message?: { content?: string } }>
     }
     const content = json.choices?.[0]?.message?.content
-    if (!content) throw new Error('Grok response is empty.')
+    if (!content) throw new Error('Groq response is empty.')
 
     try {
       return JSON.parse(stripCodeFence(content)) as unknown
     } catch {
-      throw new Error('Invalid JSON format from Grok.')
+      throw new Error('Invalid JSON format from Groq.')
     }
   }
-  throw new Error(`No available Grok model: ${lastError}`)
+  throw new Error(`No available Groq model: ${lastError}`)
 }
 
-function grokApiPlugin(apiKey: string | undefined): Plugin {
+function groqApiPlugin(apiKey: string | undefined, modelCandidates: string[]): Plugin {
   const handle = async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     if (req.method !== 'POST' || req.url !== '/api/analyze-sentence-grammar') {
       next()
       return
     }
     if (!apiKey) {
-      sendJson(res, 500, { error: 'Grok API key is not configured.' })
+      sendJson(res, 500, { error: 'Groq API key is not configured.' })
       return
     }
 
@@ -115,16 +150,16 @@ function grokApiPlugin(apiKey: string | undefined): Plugin {
         return
       }
 
-      const parsed = await callGrok(apiKey, buildGrammarPrompt(sentence))
+      const parsed = await callGroq(apiKey, buildGrammarPrompt(sentence), modelCandidates)
       sendJson(res, 200, { analysis: parsed })
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Grok request failed.'
+      const message = error instanceof Error ? error.message : 'Groq request failed.'
       sendJson(res, 500, { error: message })
     }
   }
 
   return {
-    name: 'grok-api-dev-middleware',
+    name: 'groq-api-dev-middleware',
     configureServer(server) {
       server.middlewares.use(handle)
     },
@@ -137,15 +172,21 @@ function grokApiPlugin(apiKey: string | undefined): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const apiKey =
-    env.GROK_API_KEY ||
-    env.NEXT_PUBLIC_GROK_API_KEY ||
+    env.GROQ_API_KEY ||
+    env.NEXT_PUBLIC_GROQ_API_KEY ||
     env.NEXT_PUBLIC_GEMINI_API_KEY ||
-    process.env.GROK_API_KEY ||
-    process.env.NEXT_PUBLIC_GROK_API_KEY ||
+    process.env.GROQ_API_KEY ||
+    process.env.NEXT_PUBLIC_GROQ_API_KEY ||
+    process.env.GROK_API_KEY || // backward-compat
+    process.env.NEXT_PUBLIC_GROK_API_KEY || // backward-compat
     process.env.NEXT_PUBLIC_GEMINI_API_KEY
 
+  const modelCandidates = [env.GROQ_MODEL, env.GROK_MODEL, process.env.GROQ_MODEL, process.env.GROK_MODEL, ...DEFAULT_MODEL_CANDIDATES].filter(
+    Boolean,
+  ) as string[]
+
   return {
-    plugins: [react(), grokApiPlugin(apiKey)],
+    plugins: [react(), groqApiPlugin(apiKey, modelCandidates)],
   }
 })
 

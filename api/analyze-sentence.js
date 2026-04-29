@@ -1,7 +1,12 @@
-const XAI_BASE_URL = process.env.XAI_BASE_URL || 'https://api.x.ai/v1'
-const MODEL_CANDIDATES = [process.env.GROK_MODEL, 'grok-3-mini', 'grok-3', 'grok-4-0709', 'grok-code-fast-1'].filter(
-  Boolean,
-)
+const GROQ_BASE_URL = process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1'
+const MODEL_CANDIDATES = [
+  process.env.GROQ_MODEL,
+  process.env.GROK_MODEL, // backward-compat
+  'llama-3.3-70b-versatile',
+  'llama-3.1-8b-instant',
+  'mixtral-8x7b-32768',
+  'gemma2-9b-it',
+].filter(Boolean)
 
 function buildPrompt(sentence) {
   return [
@@ -24,9 +29,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const apiKey = process.env.GROK_API_KEY || process.env.NEXT_PUBLIC_GROK_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY
+  const apiKey =
+    process.env.GROQ_API_KEY ||
+    process.env.NEXT_PUBLIC_GROQ_API_KEY ||
+    process.env.GROK_API_KEY || // backward-compat
+    process.env.NEXT_PUBLIC_GROK_API_KEY || // backward-compat
+    process.env.NEXT_PUBLIC_GEMINI_API_KEY
   if (!apiKey) {
-    return res.status(500).json({ error: 'Grok API key is not configured.' })
+    return res.status(500).json({ error: 'Groq API key is not configured.' })
   }
 
   const sentence = typeof req.body?.sentence === 'string' ? req.body.sentence.trim() : ''
@@ -38,42 +48,76 @@ export default async function handler(req, res) {
   }
 
   try {
-    let lastError = 'Unknown Grok error'
+    let lastError = 'Unknown Groq error'
     for (const model of MODEL_CANDIDATES) {
-      const response = await fetch(`${XAI_BASE_URL}/chat/completions`, {
+      const bodyWithJsonFormat = {
+        model,
+        temperature: 0.2,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: 'Return only valid JSON.' },
+          { role: 'user', content: buildPrompt(sentence) },
+        ],
+      }
+
+      const bodyWithoutJsonFormat = {
+        model,
+        temperature: 0.2,
+        messages: [
+          { role: 'system', content: 'Return only valid JSON.' },
+          { role: 'user', content: buildPrompt(sentence) },
+        ],
+      }
+
+      let response = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          model,
-          temperature: 0.2,
-          response_format: { type: 'json_object' },
-          messages: [
-            { role: 'system', content: 'Return only valid JSON.' },
-            { role: 'user', content: buildPrompt(sentence) },
-          ],
-        }),
+        body: JSON.stringify(bodyWithJsonFormat),
       })
+
       if (!response.ok) {
         const errText = await response.text()
         lastError = `model=${model}, status=${response.status}, body=${errText}`
         if (response.status === 400 && errText.includes('Model not found')) continue
-        return res.status(500).json({ error: `Grok request failed: ${lastError}` })
+
+        // Some Groq configurations may reject `response_format`. Retry without it.
+        const shouldRetryWithoutJsonFormat =
+          response.status === 400 && /response_format|json_object|unsupported/i.test(errText)
+        if (shouldRetryWithoutJsonFormat) {
+          response = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(bodyWithoutJsonFormat),
+          })
+          if (!response.ok) {
+            const retryErrText = await response.text()
+            return res
+              .status(500)
+              .json({ error: `Groq request failed: model=${model}, status=${response.status}, body=${retryErrText}` })
+          }
+        } else {
+          return res.status(500).json({ error: `Groq request failed: ${lastError}` })
+        }
       }
+
       const json = await response.json()
       const content = json?.choices?.[0]?.message?.content?.trim?.() ?? ''
-      if (!content) return res.status(502).json({ error: 'Empty response from Grok.' })
+      if (!content) return res.status(502).json({ error: 'Empty response from Groq.' })
       const cleaned = content.startsWith('```')
         ? content.replace(/^```[a-zA-Z]*\s*/m, '').replace(/```$/m, '').trim()
         : content
       const analysis = JSON.parse(cleaned)
       return res.status(200).json({ analysis })
     }
-    return res.status(500).json({ error: `No available Grok model: ${lastError}` })
+    return res.status(500).json({ error: `No available Groq model: ${lastError}` })
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Grok request failed.'
+    const message = error instanceof Error ? error.message : 'Groq request failed.'
     return res.status(500).json({ error: message })
   }
 }
