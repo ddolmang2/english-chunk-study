@@ -2,12 +2,9 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 
-const GROQ_BASE_URL = process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1'
+const GEMINI_BASE_URL = process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta'
 const DEFAULT_MODEL_CANDIDATES = [
-  'llama-3.3-70b-versatile',
-  'llama-3.1-8b-instant',
-  'mixtral-8x7b-32768',
-  'gemma2-9b-it',
+  'gemini-2.5-flash',
 ]
 
 function readJsonBody(req: IncomingMessage): Promise<unknown> {
@@ -60,85 +57,57 @@ function stripCodeFence(value: string) {
   return trimmed.replace(/^```[a-zA-Z]*\s*/m, '').replace(/```$/m, '').trim()
 }
 
-async function callGroq(apiKey: string, prompt: string, modelCandidates: string[]) {
-  let lastError = 'Unknown Groq error'
+async function callGemini(apiKey: string, prompt: string, modelCandidates: string[]) {
+  let lastError = 'Unknown Gemini error'
   for (const model of modelCandidates) {
-    const bodyWithJsonFormat = {
-      model,
-      temperature: 0.2,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: 'Return only valid JSON.' },
-        { role: 'user', content: prompt },
+    const body = {
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: prompt }],
+        },
       ],
-    }
-
-    const bodyWithoutJsonFormat = {
-      model,
-      temperature: 0.2,
-      messages: [
-        { role: 'system', content: 'Return only valid JSON.' },
-        { role: 'user', content: prompt },
-      ],
-    }
-
-    let response = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
+      generationConfig: {
+        temperature: 0.2,
+        responseMimeType: 'application/json',
       },
-      body: JSON.stringify(bodyWithJsonFormat),
+    }
+
+    const response = await fetch(`${GEMINI_BASE_URL}/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
     })
     if (!response.ok) {
       const errText = await response.text()
       lastError = `model=${model}, status=${response.status}, body=${errText}`
-      if (response.status === 400 && errText.includes('Model not found')) continue
-
-      // Some Groq models/configs may reject `response_format`. Retry without it.
-      const shouldRetryWithoutJsonFormat =
-        response.status === 400 && /response_format|json_object|unsupported/i.test(errText)
-      if (shouldRetryWithoutJsonFormat) {
-        response = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(bodyWithoutJsonFormat),
-        })
-        if (!response.ok) {
-          const retryErrText = await response.text()
-          throw new Error(`Groq request failed: model=${model}, status=${response.status}, body=${retryErrText}`)
-        }
-      } else {
-        throw new Error(`Groq request failed: ${lastError}`)
-      }
+      if (response.status === 404 || (response.status === 400 && /not found|not supported/i.test(errText))) continue
+      throw new Error(`Gemini request failed: ${lastError}`)
     }
 
     const json = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
     }
-    const content = json.choices?.[0]?.message?.content
-    if (!content) throw new Error('Groq response is empty.')
+    const content = json.candidates?.[0]?.content?.parts?.[0]?.text
+    if (!content) throw new Error('Gemini response is empty.')
 
     try {
-      return JSON.parse(stripCodeFence(content)) as unknown
+      return { parsed: JSON.parse(stripCodeFence(content)) as unknown, usedModel: model }
     } catch {
-      throw new Error('Invalid JSON format from Groq.')
+      throw new Error('Invalid JSON format from Gemini.')
     }
   }
-  throw new Error(`No available Groq model: ${lastError}`)
+  throw new Error(`No available Gemini model: ${lastError}`)
 }
 
-function groqApiPlugin(apiKey: string | undefined, modelCandidates: string[]): Plugin {
+function geminiApiPlugin(apiKey: string | undefined, modelCandidates: string[]): Plugin {
   const handle = async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     if (req.method !== 'POST' || req.url !== '/api/analyze-sentence-grammar') {
       next()
       return
     }
     if (!apiKey) {
-      sendJson(res, 500, { error: 'Groq API key is not configured.' })
+      sendJson(res, 500, { error: 'Gemini API key is not configured.' })
       return
     }
 
@@ -150,16 +119,22 @@ function groqApiPlugin(apiKey: string | undefined, modelCandidates: string[]): P
         return
       }
 
-      const parsed = await callGroq(apiKey, buildGrammarPrompt(sentence), modelCandidates)
-      sendJson(res, 200, { analysis: parsed })
+      const result = await callGemini(apiKey, buildGrammarPrompt(sentence), modelCandidates)
+      sendJson(res, 200, {
+        analysis: result.parsed,
+        meta: {
+          usedModel: result.usedModel,
+          usedBaseUrl: GEMINI_BASE_URL,
+        },
+      })
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Groq request failed.'
+      const message = error instanceof Error ? error.message : 'Gemini request failed.'
       sendJson(res, 500, { error: message })
     }
   }
 
   return {
-    name: 'groq-api-dev-middleware',
+    name: 'gemini-api-dev-middleware',
     configureServer(server) {
       server.middlewares.use(handle)
     },
@@ -172,21 +147,21 @@ function groqApiPlugin(apiKey: string | undefined, modelCandidates: string[]): P
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const apiKey =
-    env.GROQ_API_KEY ||
-    env.NEXT_PUBLIC_GROQ_API_KEY ||
+    env.GEMINI_API_KEY ||
     env.NEXT_PUBLIC_GEMINI_API_KEY ||
-    process.env.GROQ_API_KEY ||
-    process.env.NEXT_PUBLIC_GROQ_API_KEY ||
-    process.env.GROK_API_KEY || // backward-compat
-    process.env.NEXT_PUBLIC_GROK_API_KEY || // backward-compat
+    process.env.GEMINI_API_KEY ||
     process.env.NEXT_PUBLIC_GEMINI_API_KEY
 
-  const modelCandidates = [env.GROQ_MODEL, env.GROK_MODEL, process.env.GROQ_MODEL, process.env.GROK_MODEL, ...DEFAULT_MODEL_CANDIDATES].filter(
-    Boolean,
-  ) as string[]
+  const modelCandidates = [
+    env.GEMINI_MODEL,
+    env.NEXT_PUBLIC_GEMINI_MODEL,
+    process.env.GEMINI_MODEL,
+    process.env.NEXT_PUBLIC_GEMINI_MODEL,
+    ...DEFAULT_MODEL_CANDIDATES,
+  ].filter(Boolean) as string[]
 
   return {
-    plugins: [react(), groqApiPlugin(apiKey, modelCandidates)],
+    plugins: [react(), geminiApiPlugin(apiKey, modelCandidates)],
   }
 })
 

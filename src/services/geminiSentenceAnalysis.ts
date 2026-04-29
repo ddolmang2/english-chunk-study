@@ -4,10 +4,18 @@ export type SentenceAnalysis = {
   summary: string
   grammarTips: string[]
   keywords: string[]
+  _meta?: {
+    usedModel?: string
+    usedBaseUrl?: string
+  }
 }
 
 type AnalyzeSentenceResponse = {
   analysis?: SentenceAnalysis
+  meta?: {
+    usedModel?: string
+    usedBaseUrl?: string
+  }
   error?: string
 }
 
@@ -34,5 +42,8 @@ export async function analyzeSentenceWithGemini(
     throw new Error(json.error ?? '문장 분석에 실패했습니다.')
   }
 
-  return json.analysis
+  return {
+    ...json.analysis,
+    _meta: json.meta,
+  }
 }

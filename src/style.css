@@ -1,18 +1,18 @@
 :root {
-  --bg: #050b17;
-  --panel: rgba(11, 25, 46, 0.78);
-  --panel2: rgba(18, 41, 76, 0.76);
-  --text: rgba(232, 244, 255, 0.94);
-  --muted: rgba(190, 213, 236, 0.72);
-  --border: rgba(98, 152, 216, 0.26);
-  --shadow: 0 14px 36px rgba(1, 7, 16, 0.55);
-  --radius: 16px;
-  --primary: #2563eb;
-  --primary2: #38bdf8;
+  --bg: #070d1a;
+  --panel: rgba(13, 23, 42, 0.82);
+  --panel2: rgba(17, 33, 62, 0.8);
+  --text: rgba(238, 246, 255, 0.96);
+  --muted: rgba(186, 205, 230, 0.74);
+  --border: rgba(117, 163, 220, 0.22);
+  --shadow: 0 16px 36px rgba(1, 8, 20, 0.44);
+  --radius: 18px;
+  --primary: #3b82f6;
+  --primary2: #22d3ee;
 
   color-scheme: dark;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  line-height: 1.4;
+  line-height: 1.5;
   background: radial-gradient(1200px 500px at 20% 10%, rgba(37, 99, 235, 0.2), transparent 55%),
     radial-gradient(900px 450px at 80% 0%, rgba(56, 189, 248, 0.15), transparent 55%),
     var(--bg);
@@ -45,10 +45,10 @@ a {
   gap: 12px;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--border);
-  background: rgba(5, 12, 23, 0.82);
-  backdrop-filter: blur(10px);
+  background: rgba(7, 14, 28, 0.78);
+  backdrop-filter: blur(12px);
 }
 
 .topbarTitle {
@@ -69,15 +69,15 @@ a {
 }
 
 .container {
-  width: min(980px, 100%);
+  width: min(1080px, 100%);
   margin: 0 auto;
-  padding: 18px 16px 60px;
+  padding: 24px 18px 72px;
 }
 
 .h1 {
-  margin: 8px 0 14px;
-  font-size: 26px;
-  letter-spacing: -0.5px;
+  margin: 4px 0 16px;
+  font-size: 30px;
+  letter-spacing: -0.6px;
 }
 
 .grid {
@@ -93,11 +93,11 @@ a {
 }
 
 .card {
-  background: linear-gradient(180deg, var(--panel), rgba(13, 33, 60, 0.72));
+  background: linear-gradient(180deg, var(--panel), rgba(10, 22, 42, 0.84));
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 16px;
+  padding: 18px;
 }
 
 .cardTitle {
@@ -108,7 +108,7 @@ a {
 
 .muted {
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .row {
@@ -133,11 +133,11 @@ a {
   background: rgba(148, 188, 233, 0.12);
   color: var(--text);
   border-radius: 12px;
-  padding: 10px 12px;
+  padding: 10px 14px;
   font-weight: 650;
   letter-spacing: -0.2px;
   cursor: pointer;
-  transition: transform 0.06s ease, background 0.15s ease, border-color 0.15s ease;
+  transition: transform 0.08s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .btn:hover,
@@ -145,6 +145,7 @@ a {
 .btnGhost:hover {
   background: rgba(148, 188, 233, 0.2);
   border-color: rgba(148, 188, 233, 0.42);
+  box-shadow: 0 8px 16px rgba(2, 9, 22, 0.22);
 }
 
 .btn:active,
@@ -166,7 +167,15 @@ a {
 
 .btnPrimary {
   border-color: rgba(56, 189, 248, 0.58);
-  background: linear-gradient(180deg, rgba(37, 99, 235, 0.95), rgba(29, 78, 216, 0.8));
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.92), rgba(37, 99, 235, 0.78));
+}
+
+.btn:focus-visible,
+.btnPrimary:focus-visible,
+.btnGhost:focus-visible {
+  outline: none;
+  border-color: rgba(56, 189, 248, 0.7);
+  box-shadow: 0 0 0 4px rgba(14, 116, 244, 0.2);
 }
 
 .btnLink {
@@ -281,6 +290,9 @@ a {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  max-height: 220px;
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .chip {
@@ -290,14 +302,20 @@ a {
   border-radius: 999px;
   padding: 10px 12px;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text);
   font-weight: 700;
   letter-spacing: -0.2px;
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.08s ease;
 }
 
 .chipOption {
   cursor: pointer;
+}
+
+.chipOption:hover {
+  border-color: rgba(148, 188, 233, 0.42);
+  background: rgba(148, 188, 233, 0.16);
 }
 
 .chipOption:disabled {
@@ -306,8 +324,8 @@ a {
 }
 
 .chipPicked {
-  border-color: rgba(167, 139, 250, 0.55);
-  background: rgba(124, 58, 237, 0.18);
+  border-color: rgba(125, 211, 252, 0.64);
+  background: rgba(14, 116, 244, 0.24);
   cursor: pointer;
 }
 
@@ -396,7 +414,7 @@ a {
 }
 
 .clozeContainer {
-  width: min(1200px, 100%);
+  width: min(1240px, 100%);
 }
 
 .clozeBoard {
@@ -462,22 +480,12 @@ a {
 
 .clozeText {
   margin-top: 12px;
-  line-height: 1.9;
+  line-height: 1.95;
   font-size: 17px;
   white-space: break-spaces;
   word-break: normal;
   overflow-wrap: anywhere;
-  cursor: pointer;
   border-radius: 10px;
-  transition: background-color 0.15s ease;
-}
-
-.clozeText:hover {
-  background: rgba(56, 189, 248, 0.08);
-}
-
-.clozeText * {
-  cursor: pointer !important;
 }
 
 .clozeTextToken {
@@ -520,8 +528,8 @@ a {
   padding: 2px 10px;
   margin: 0 4px;
   border-radius: 10px;
-  border: 1px dashed rgba(167, 139, 250, 0.8);
-  background: rgba(124, 58, 237, 0.08);
+  border: 1px dashed rgba(125, 211, 252, 0.7);
+  background: rgba(14, 116, 244, 0.12);
   cursor: pointer;
 }
 
@@ -577,8 +585,8 @@ a {
 }
 
 .chunkPoolControls .btn {
-  background: rgba(255, 255, 255, 0.09);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
 .sentenceList {
@@ -589,8 +597,8 @@ a {
 
 .sentenceItem {
   border: 1px solid var(--border);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
   overflow: hidden;
 }
 
@@ -600,7 +608,7 @@ a {
   background: transparent;
   color: var(--text);
   border: 0;
-  padding: 10px 12px;
+  padding: 12px 14px;
   line-height: 1.65;
   cursor: pointer;
   display: flex;
@@ -610,7 +618,7 @@ a {
 }
 
 .sentenceBtn:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(148, 188, 233, 0.12);
 }
 
 .sentenceIndex {
@@ -644,9 +652,9 @@ a {
 }
 
 .sentencePanel.open {
-  max-height: 220px;
+  max-height: 280px;
   border-top-color: var(--border);
-  padding: 10px 12px 12px;
+  padding: 12px 14px 14px;
 }
 
 .sentenceMeta {

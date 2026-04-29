@@ -6,10 +6,18 @@ export type GeminiGrammarAnalysis = {
     object: string
   }
   learning_tip: string
+  _meta?: {
+    usedModel?: string
+    usedBaseUrl?: string
+  }
 }
 
 type ResponseBody = {
   analysis?: GeminiGrammarAnalysis
+  meta?: {
+    usedModel?: string
+    usedBaseUrl?: string
+  }
   error?: string
 }
 
@@ -28,5 +36,8 @@ export async function analyzeSentenceGrammar(sentence: string, signal?: AbortSig
   if (!res.ok || !json.analysis) {
     throw new Error(json.error ?? '문장 분석 요청에 실패했습니다.')
   }
-  return json.analysis
+  return {
+    ...json.analysis,
+    _meta: json.meta,
+  }
 }

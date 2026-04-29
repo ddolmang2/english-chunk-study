@@ -1158,6 +1158,7 @@ export function ClozeWorkbookRoute() {
                       {loading && <div className="muted">Gemini가 문장을 분석하는 중...</div>}
                       {!loading && analysis && (
                         <>
+                          <div className="muted">응답 모델: {analysis._meta?.usedModel ?? 'unknown'}</div>
                           <div className="sentenceMeta">
                             <span className="badgeSubj">Subject: {analysis.grammar_analysis.subject || '-'}</span>
                             <span className="badgeVerb">Verb: {analysis.grammar_analysis.verb || '-'}</span>
