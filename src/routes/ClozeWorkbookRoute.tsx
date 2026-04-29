@@ -997,7 +997,7 @@ export function ClozeWorkbookRoute() {
       <header className="topbar">
         <div>
           <div className="appTitle">AI Sentence Coach</div>
-          <div className="appSubtitle">실시간 AI 과외 선생님 · 문법 근거 기반 하이라이트</div>
+          <div className="appSubtitle">실시간 AI 과외 선생님 · 간단한 문장 설명</div>
         </div>
         <Link className="btn" to="/">
           홈으로
@@ -1011,7 +1011,7 @@ export function ClozeWorkbookRoute() {
               PDF 업로드
             </label>
             <button className="btn" onClick={() => setIsHighlightOn((v) => !v)} disabled={!currentPage}>
-              Highlight {isHighlightOn ? 'On' : 'Off'}
+              주어 동사표시 {isHighlightOn ? 'On' : 'Off'}
             </button>
           </div>
           <input id="pdf-upload" type="file" accept="application/pdf" onChange={onUpload} style={{ display: 'none' }} />
