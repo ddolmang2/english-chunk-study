@@ -1,4 +1,4 @@
-import { getCoachGuidelineLines } from './coach-guideline'
+import { getCoachGuidelineLines } from './coach-guideline.js'
 
 const GEMINI_BASE_URL = process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta'
 const MODEL_CANDIDATES = [
